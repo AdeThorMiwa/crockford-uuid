@@ -57,15 +57,19 @@ pub mod crock_ford {
             format!("{}{}", self.value(), Uuid::get_checksum_char(self.checksum))
         }
 
-        fn from_str(value: &str) -> Result<Self, String> {
-            if value.len() != 33 {
-                return Err("invalid string length".to_string());
+        fn len() -> usize {
+            (BYTE_SIZE * 8 / 5) + 1 // we are trying to fit 8 bits bytes into a 5 bit char
+        }
+
+        fn from_str(value: &str) -> Result<Self, &'static str> {
+            if value.len() != Uuid::len() {
+                return Err("invalid string length");
             }
             let value = value.to_ascii_uppercase();
 
             let id = &value[..=31];
             let decoded = match base32::decode(base32::Alphabet::Crockford, id) {
-                None => return Err("invalid uuid str".to_string()),
+                None => return Err("invalid uuid str"),
                 Some(d) => d,
             };
 
@@ -76,7 +80,7 @@ pub mod crock_ford {
                     checksum: derived_cksum,
                 })
             } else {
-                Err("invalid uuid str".to_string())
+                Err("invalid uuid str")
             }
         }
     }
@@ -88,14 +92,14 @@ pub mod crock_ford {
     }
 
     impl TryFrom<&str> for Uuid {
-        type Error = String;
+        type Error = &'static str;
         fn try_from(value: &str) -> Result<Self, Self::Error> {
             Uuid::from_str(value)
         }
     }
 
     impl TryFrom<String> for Uuid {
-        type Error = String;
+        type Error = &'static str;
         fn try_from(value: String) -> Result<Self, Self::Error> {
             Uuid::from_str(value.as_str())
         }
@@ -112,12 +116,10 @@ pub mod crock_ford {
 mod tests {
     use crate::crock_ford::Uuid;
 
-    use super::*;
-
     #[test]
     fn generate() {
-        let uuid = crock_ford::Uuid::new();
-        assert_eq!(uuid.to_string().len(), 33);
+        let uuid = Uuid::new();
+        assert_eq!(uuid.to_string().len(), 33); // 32 char identifier, 1 char checksum
     }
 
     #[test]
