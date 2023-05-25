@@ -4,7 +4,8 @@ pub mod crock_ford {
 
     const BYTE_SIZE: usize = 20;
     const CROCKFORD_CHECKSUM_CHARS: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=U";
-    const CROCKFORD_MODULO_PRIME: usize = 37; // a prime number greater than 32 for checksum derivation
+    // a prime number greater than 32 for checksum derivation
+    const CROCKFORD_MODULO_PRIME: usize = 37;
 
     fn rng() -> &'static dyn SecureRandom {
         use std::ops::Deref;
@@ -58,13 +59,15 @@ pub mod crock_ford {
         }
 
         fn len() -> usize {
-            (BYTE_SIZE * 8 / 5) + 1 // we are trying to fit 8 bits bytes into a 5 bit char
+            // we are trying to fit 8 bits bytes into a 5 bit char
+            (BYTE_SIZE * 8 / 5) + 1
         }
 
         fn from_str(value: &str) -> Result<Self, &'static str> {
             if value.len() != Uuid::len() {
                 return Err("invalid string length");
             }
+
             let value = value.to_ascii_uppercase();
 
             let id = &value[..=31];
