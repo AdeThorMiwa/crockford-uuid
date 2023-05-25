@@ -161,7 +161,7 @@ mod tests {
     fn compare_uuid_with_string() {
         let str_uuid = "1fe1ewyb60gvfj71yd4aq1qftz5dkwkjg";
         let uuid: Uuid = str_uuid.try_into().unwrap();
-        assert_ne!(uuid, str_uuid.to_string());
+        assert_eq!(uuid, str_uuid.to_string());
     }
 
     // get as integer
