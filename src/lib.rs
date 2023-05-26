@@ -1,5 +1,4 @@
 pub mod crock_ford {
-    use core::slice::SlicePattern;
 
     use bytes::BytesMut;
     use lazy_static::lazy_static;
@@ -50,14 +49,14 @@ pub mod crock_ford {
 
     impl TryFrom<u32> for Bytes {
         type Error = &'static str;
-        fn try_from(value: u32) -> Result<Self, Self::Error> {
+        fn try_from(_value: u32) -> Result<Self, Self::Error> {
             todo!()
         }
     }
 
     impl TryFrom<Vec<u8>> for Bytes {
         type Error = &'static str;
-        fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        fn try_from(_value: Vec<u8>) -> Result<Self, Self::Error> {
             todo!()
         }
     }
