@@ -1,5 +1,9 @@
 pub mod crock_ford {
+    use core::slice::SlicePattern;
+
+    use bytes::BytesMut;
     use lazy_static::lazy_static;
+    use num_bigint::{BigUint, ToBigUint};
     use ring::rand::{SecureRandom, SystemRandom};
 
     const BYTE_SIZE: usize = 20;
@@ -17,41 +21,66 @@ pub mod crock_ford {
         RANDOM.deref()
     }
 
-    fn rand_bytes(size: usize) -> Result<Vec<u8>, String> {
-        let mut bytes: Vec<u8> = vec![0; size];
-        rng().fill(&mut bytes).map_err(|e| e.to_string())?;
-        Ok(bytes)
+    #[derive(Debug)]
+    struct Bytes(BytesMut);
+
+    impl Bytes {
+        pub fn to_slice(&self) -> &[u8] {
+            &self.0[..]
+        }
+
+        pub fn to_int(&self) -> BigUint {
+            BigUint::from_bytes_be(&self.0[..])
+        }
+
+        pub fn to_vec(&self) -> Vec<u8> {
+            self.0.to_vec()
+        }
+
+        pub fn derive_crockford_checksum(&self) -> BigUint {
+            self.to_int() % ToBigUint::to_biguint(&CROCKFORD_MODULO_PRIME).unwrap()
+        }
+
+        pub fn new(size: usize) -> Result<Self, String> {
+            let mut bytes = BytesMut::with_capacity(size);
+            rng().fill(&mut bytes).map_err(|e| e.to_string())?;
+            Ok(Self(bytes))
+        }
+    }
+
+    impl TryFrom<u32> for Bytes {
+        type Error = &'static str;
+        fn try_from(value: u32) -> Result<Self, Self::Error> {
+            todo!()
+        }
+    }
+
+    impl TryFrom<Vec<u8>> for Bytes {
+        type Error = &'static str;
+        fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+            todo!()
+        }
     }
 
     #[derive(Debug)]
     pub struct Uuid {
-        bytes: Vec<u8>,
-        checksum: i8,
+        bytes: Bytes,
+        checksum: BigUint,
     }
 
     impl Uuid {
         pub fn new() -> Self {
-            let bytes = rand_bytes(BYTE_SIZE).expect("failed to generate random bytes");
-            let checksum = Uuid::derive_checksum(&mut &bytes[..]);
+            let bytes = Bytes::new(BYTE_SIZE).expect("failed to generate random bytes");
+            let checksum = bytes.derive_crockford_checksum();
             Self { bytes, checksum }
         }
 
         pub fn value(&self) -> String {
-            base32::encode(base32::Alphabet::Crockford, &self.bytes)
+            base32::encode(base32::Alphabet::Crockford, &self.bytes.to_slice())
         }
 
-        fn bytes_to_int(bytes: &mut &[u8]) -> i128 {
-            let (int_bytes, rest) = bytes.split_at(std::mem::size_of::<i128>());
-            *bytes = rest;
-            i128::from_ne_bytes(int_bytes.try_into().unwrap())
-        }
-
-        fn derive_checksum(bytes: &mut &[u8]) -> i8 {
-            let id_to_int = Uuid::bytes_to_int(bytes);
-            (id_to_int % CROCKFORD_MODULO_PRIME as i128) as i8
-        }
-
-        fn get_checksum_char(checksum: i8) -> char {
+        fn get_checksum_char(checksum: &BigUint) -> char {
+            let checksum: i8 = checksum.try_into().unwrap();
             CROCKFORD_CHECKSUM_CHARS
                 .chars()
                 .nth(checksum.abs() as usize)
@@ -59,7 +88,11 @@ pub mod crock_ford {
         }
 
         fn value_with_checksum(&self) -> String {
-            format!("{}{}", self.value(), Uuid::get_checksum_char(self.checksum))
+            format!(
+                "{}{}",
+                self.value(),
+                Uuid::get_checksum_char(&self.checksum)
+            )
         }
 
         fn len() -> usize {
@@ -75,17 +108,14 @@ pub mod crock_ford {
             let value = value.to_ascii_uppercase();
 
             let id = &value[..=31];
-            let decoded = match base32::decode(base32::Alphabet::Crockford, id) {
+            let bytes = match base32::decode(base32::Alphabet::Crockford, id) {
                 None => return Err("invalid uuid str"),
-                Some(d) => d,
+                Some(d) => Bytes::try_from(d)?,
             };
 
-            let derived_cksum = Uuid::derive_checksum(&mut &decoded[..]);
-            if Uuid::get_checksum_char(derived_cksum) == value[32..].chars().nth(0).unwrap() {
-                Ok(Self {
-                    bytes: decoded,
-                    checksum: derived_cksum,
-                })
+            let checksum = bytes.derive_crockford_checksum();
+            if Uuid::get_checksum_char(&checksum) == value[32..].chars().nth(0).unwrap() {
+                Ok(Self { bytes, checksum })
             } else {
                 Err("invalid uuid str")
             }
@@ -112,15 +142,24 @@ pub mod crock_ford {
         }
     }
 
-    impl Into<u32> for Uuid {
-        fn into(self) -> u32 {
-            Uuid::bytes_to_int(&mut &self.bytes[..]) as u32
+    impl TryFrom<u32> for Uuid {
+        type Error = &'static str;
+        fn try_from(value: u32) -> Result<Self, Self::Error> {
+            let bytes = Bytes::try_from(value)?;
+            let checksum = bytes.derive_crockford_checksum();
+            Ok(Self { bytes, checksum })
+        }
+    }
+
+    impl Into<BigUint> for Uuid {
+        fn into(self) -> BigUint {
+            self.bytes.to_int()
         }
     }
 
     impl Into<Vec<u8>> for Uuid {
         fn into(self) -> Vec<u8> {
-            self.bytes
+            self.bytes.to_vec()
         }
     }
 
@@ -142,6 +181,8 @@ pub mod crock_ford {
 
 #[cfg(test)]
 mod tests {
+    use num_bigint::BigUint;
+
     use crate::crock_ford::Uuid;
 
     #[test]
@@ -182,7 +223,7 @@ mod tests {
 
     #[test]
     fn get_uuid_as_integer_value() {
-        let uuid: u32 = Uuid::new().into();
+        let uuid: BigUint = Uuid::new().into();
         println!("{}", uuid);
     }
 
@@ -194,4 +235,10 @@ mod tests {
     }
 
     // compare with int and byte
+    #[test]
+    fn convert_integer_to_uuid() {
+        let uuid: Uuid = 1332062643.try_into().unwrap();
+        println!("{}", uuid);
+        assert_eq!(uuid.to_string(), "")
+    }
 }
