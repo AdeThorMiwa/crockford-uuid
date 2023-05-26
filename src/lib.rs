@@ -40,10 +40,14 @@ pub mod crock_ford {
             base32::encode(base32::Alphabet::Crockford, &self.bytes)
         }
 
-        fn derive_checksum(bytes: &mut &[u8]) -> i8 {
+        fn bytes_to_int(bytes: &mut &[u8]) -> i128 {
             let (int_bytes, rest) = bytes.split_at(std::mem::size_of::<i128>());
             *bytes = rest;
-            let id_to_int = i128::from_ne_bytes(int_bytes.try_into().unwrap());
+            i128::from_ne_bytes(int_bytes.try_into().unwrap())
+        }
+
+        fn derive_checksum(bytes: &mut &[u8]) -> i8 {
+            let id_to_int = Uuid::bytes_to_int(bytes);
             (id_to_int % CROCKFORD_MODULO_PRIME as i128) as i8
         }
 
@@ -108,6 +112,18 @@ pub mod crock_ford {
         }
     }
 
+    impl Into<u32> for Uuid {
+        fn into(self) -> u32 {
+            Uuid::bytes_to_int(&mut &self.bytes[..]) as u32
+        }
+    }
+
+    impl Into<Vec<u8>> for Uuid {
+        fn into(self) -> Vec<u8> {
+            self.bytes
+        }
+    }
+
     impl PartialEq<Uuid> for Uuid {
         fn eq(&self, other: &Uuid) -> bool {
             self.value_with_checksum() == other.value_with_checksum()
@@ -164,9 +180,18 @@ mod tests {
         assert_eq!(uuid, str_uuid.to_string());
     }
 
-    // get as integer
+    #[test]
+    fn get_uuid_as_integer_value() {
+        let uuid: u32 = Uuid::new().into();
+        println!("{}", uuid);
+    }
 
     // get as byte
+    #[test]
+    fn get_uuid_as_byte_value() {
+        let uuid: Vec<u8> = Uuid::new().into();
+        println!("{:?}", uuid);
+    }
 
     // compare with int and byte
 }
