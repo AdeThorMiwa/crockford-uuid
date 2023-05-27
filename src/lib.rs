@@ -41,23 +41,26 @@ pub mod crock_ford {
         }
 
         pub fn new(size: usize) -> Result<Self, String> {
-            let mut bytes = BytesMut::with_capacity(size);
+            let mut bytes = vec![0; size];
             rng().fill(&mut bytes).map_err(|e| e.to_string())?;
-            Ok(Self(bytes))
+            Ok(Self(BytesMut::from_iter(bytes.iter())))
         }
     }
 
-    impl TryFrom<u32> for Bytes {
+    impl TryFrom<BigUint> for Bytes {
         type Error = &'static str;
-        fn try_from(_value: u32) -> Result<Self, Self::Error> {
-            todo!()
+        fn try_from(value: BigUint) -> Result<Self, Self::Error> {
+            let bytes = value.to_bytes_be();
+            Bytes::try_from(bytes)
         }
     }
 
     impl TryFrom<Vec<u8>> for Bytes {
         type Error = &'static str;
-        fn try_from(_value: Vec<u8>) -> Result<Self, Self::Error> {
-            todo!()
+        fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+            let bytes = BytesMut::try_from(&value[..])
+                .map_err(|_| "unable to convert value to mutable byte")?;
+            Ok(Self(bytes))
         }
     }
 
@@ -141,10 +144,12 @@ pub mod crock_ford {
         }
     }
 
-    impl TryFrom<u32> for Uuid {
+    impl TryFrom<BigUint> for Uuid {
         type Error = &'static str;
-        fn try_from(value: u32) -> Result<Self, Self::Error> {
-            let bytes = Bytes::try_from(value)?;
+        fn try_from(value: BigUint) -> Result<Self, Self::Error> {
+            let bytes: Bytes = value
+                .try_into()
+                .map_err(|_| "unable to convert bigint to uuid")?;
             let checksum = bytes.derive_crockford_checksum();
             Ok(Self { bytes, checksum })
         }
@@ -159,6 +164,12 @@ pub mod crock_ford {
     impl Into<Vec<u8>> for Uuid {
         fn into(self) -> Vec<u8> {
             self.bytes.to_vec()
+        }
+    }
+
+    impl Into<Bytes> for Uuid {
+        fn into(self) -> Bytes {
+            self.bytes
         }
     }
 
@@ -180,50 +191,51 @@ pub mod crock_ford {
 
 #[cfg(test)]
 mod tests {
+    use crate::crock_ford::Uuid;
     use num_bigint::BigUint;
 
-    use crate::crock_ford::Uuid;
+    fn str_uuid() -> &'static str {
+        "AACY7965PRS7631ZGTK6100GZAGMVV7X2"
+    }
 
     #[test]
     fn generate() {
         let uuid = Uuid::new();
+        println!("uuid={}", uuid);
         assert_eq!(uuid.to_string().len(), 33); // 32 char identifier, 1 char checksum
     }
 
     #[test]
     fn generate_from_string() {
-        let str_uuid = "1fe1ewyb60gvfj71yd4aq1qftz5dkwkjg";
-        let result: Uuid = str_uuid.try_into().unwrap();
-        assert_eq!(result.to_string().to_lowercase(), str_uuid);
+        let result: Uuid = str_uuid().try_into().unwrap();
+        assert_eq!(result.to_string(), str_uuid());
     }
 
     #[test]
     fn compare_two_uuid_of_same_value() {
-        let str_uuid = "1fe1ewyb60gvfj71yd4aq1qftz5dkwkjg";
-        let first: Uuid = str_uuid.try_into().unwrap();
-        let second: Uuid = str_uuid.try_into().unwrap();
+        let first: Uuid = str_uuid().try_into().unwrap();
+        let second: Uuid = str_uuid().try_into().unwrap();
         assert_eq!(first, second);
     }
 
     #[test]
     fn compare_two_uuid_of_diff_value() {
-        let str_uuid = "1fe1ewyb60gvfj71yd4aq1qftz5dkwkjg";
-        let first: Uuid = str_uuid.try_into().unwrap();
+        let first: Uuid = str_uuid().try_into().unwrap();
         let second = Uuid::new();
         assert_ne!(first, second);
     }
 
     #[test]
     fn compare_uuid_with_string() {
-        let str_uuid = "1fe1ewyb60gvfj71yd4aq1qftz5dkwkjg";
-        let uuid: Uuid = str_uuid.try_into().unwrap();
-        assert_eq!(uuid, str_uuid.to_string());
+        let uuid: Uuid = str_uuid().try_into().unwrap();
+        assert_eq!(uuid, str_uuid().to_string());
     }
 
     #[test]
     fn get_uuid_as_integer_value() {
-        let uuid: BigUint = Uuid::new().into();
-        println!("{}", uuid);
+        let uuid: Uuid = str_uuid().try_into().unwrap();
+        let int_value: BigUint = uuid.into();
+        println!("{}", int_value);
     }
 
     // get as byte
@@ -236,8 +248,11 @@ mod tests {
     // compare with int and byte
     #[test]
     fn convert_integer_to_uuid() {
-        let uuid: Uuid = 1332062643.try_into().unwrap();
-        println!("{}", uuid);
-        assert_eq!(uuid.to_string(), "")
+        let uuid: Uuid =
+            BigUint::parse_bytes(b"471569087780948647371060810118848519319753452797", 10)
+                .unwrap()
+                .try_into()
+                .unwrap();
+        assert_eq!(uuid, str_uuid().to_string())
     }
 }
