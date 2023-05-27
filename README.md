@@ -20,7 +20,7 @@ the number of bacterial cells in existence on the planet. :)
 Add the following to your `Cargo.toml`:
 
 ```toml
-crockford-uuid = "0.1.1"
+crockford-uuid = "0.1.2"
 ```
 
 When you want a identifier, you can generate one:
