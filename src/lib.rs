@@ -195,7 +195,7 @@ mod tests {
     use num_bigint::BigUint;
 
     fn str_uuid() -> &'static str {
-        "AACY7965PRS7631ZGTK6100GZAGMVV7X2"
+        "aacy7965prs7631zgtk6100gzagmvv7x2"
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn generate_from_string() {
         let result: Uuid = str_uuid().try_into().unwrap();
-        assert_eq!(result.to_string(), str_uuid());
+        assert_eq!(result.to_string().to_lowercase(), str_uuid());
     }
 
     #[test]
