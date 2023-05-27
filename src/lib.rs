@@ -5,7 +5,7 @@ pub mod crock_ford {
     use num_bigint::{BigUint, ToBigUint};
     use ring::rand::{SecureRandom, SystemRandom};
 
-    const BYTE_SIZE: usize = 20;
+    const BYTE_SIZE: usize = 15;
     const CROCKFORD_CHECKSUM_CHARS: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ*~$=U";
     // a prime number greater than 32 for checksum derivation
     const CROCKFORD_MODULO_PRIME: usize = 37;
@@ -109,14 +109,16 @@ pub mod crock_ford {
 
             let value = value.to_ascii_uppercase();
 
-            let id = &value[..=31];
+            let id = &value[..=(Uuid::len() - 2)];
             let bytes = match base32::decode(base32::Alphabet::Crockford, id) {
                 None => return Err("invalid uuid str"),
                 Some(d) => Bytes::try_from(d)?,
             };
 
             let checksum = bytes.derive_crockford_checksum();
-            if Uuid::get_checksum_char(&checksum) == value[32..].chars().nth(0).unwrap() {
+            if Uuid::get_checksum_char(&checksum)
+                == value[(Uuid::len() - 1)..].chars().nth(0).unwrap()
+            {
                 Ok(Self { bytes, checksum })
             } else {
                 Err("invalid uuid str")
@@ -195,14 +197,14 @@ mod tests {
     use num_bigint::BigUint;
 
     fn str_uuid() -> &'static str {
-        "aacy7965prs7631zgtk6100gzagmvv7x2"
+        "4s0y2vz7sf4vghnznytz9gvq6"
     }
 
     #[test]
     fn generate() {
         let uuid = Uuid::new();
         println!("uuid={}", uuid);
-        assert_eq!(uuid.to_string().len(), 33); // 32 char identifier, 1 char checksum
+        assert_eq!(uuid.to_string().len(), 25); // 24 char identifier, 1 char checksum
     }
 
     #[test]
@@ -248,11 +250,8 @@ mod tests {
     // compare with int and byte
     #[test]
     fn convert_integer_to_uuid() {
-        let uuid: Uuid =
-            BigUint::parse_bytes(b"471569087780948647371060810118848519319753452797", 10)
-                .unwrap()
-                .try_into()
-                .unwrap();
+        let int_value: BigUint = Uuid::try_from(str_uuid()).unwrap().try_into().unwrap();
+        let uuid: Uuid = int_value.try_into().unwrap();
         assert_eq!(uuid, str_uuid().to_string())
     }
 }
