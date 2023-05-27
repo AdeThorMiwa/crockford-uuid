@@ -3,16 +3,16 @@
 Here's an example of a crockford-uuid:
 
 ```text
-aacy7965prs7631zgtk6100gzagmvv7x2
+4s0y2vz7sf4vghnznytz9gvq6
 ```
 
-A crockford-uuid Uuid is a unique 160-bit value, stored as 20 bytes identifier,
+A crockford-uuid Uuid is a unique 120-bit value, stored as 15 bytes identifier,
 and a fixed number checksum character derived from the identifier for value's
 integrity check.
 
 The uniqueness property is not strictly guaranteed, however for all
 practical purposes, it can be assumed that an unintentional collision would
-be extremely unlikely as the 160 bit key space is about the same size as
+be extremely unlikely as the 120 bit key space is about the same size as
 the number of bacterial cells in existence on the planet. :)
 
 ## Getting started
@@ -36,11 +36,8 @@ If you have a crockford-uuid value, you can use its string literal, BigUint and 
 ```rust
 use uuid::Uuid;
 
-const from_string_lit: Uuid = "aacy7965prs7631zgtk6100gzagmvv7x2".try_into().unwrap();
-const from_big_uint: Uuid = BigUint::parse_bytes(
-                            b"471569087780948647371060810118848519319753452797",
-                            10
-                        ).unwrap().try_into().unwrap();
+const from_string_lit: Uuid = "4s0y2vz7sf4vghnznytz9gvq6".try_into().unwrap();
+const from_big_uint: Uuid = BigUint::parse_bytes(b"471569087780948647371060810118848519319753452797", 10).unwrap().try_into().unwrap();
 ```
 
 You can also convert crockford-uuid to be used as a string literal, BigUint, `Vec<u8>` (Bytes)
