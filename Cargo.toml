@@ -13,6 +13,7 @@ description = "A library to generate and parse Crockford Base32 Identifiers."
 homepage = "https://github.com/AdeThorMiwa/crockford-uuid"
 repository = "https://github.com/AdeThorMiwa/crockford-uuid"
 readme = "README.md"
+license = "MIT"
 
 [dependencies]
 base32 = "0.4.0"
